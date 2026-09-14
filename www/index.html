@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <title>Fieldmark Vision</title>
 <meta name="description" content="Point your camera at anything and see what it is — objects and surfaces, all on your device.">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://cdn.jsdelivr.net https://storage.googleapis.com https://tfhub.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; worker-src 'self' blob:; media-src 'self' blob:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src 'self' https://cdn.jsdelivr.net https://storage.googleapis.com https://tfhub.dev https://www.kaggle.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; worker-src 'self' blob:; media-src 'self' blob:">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#10161C">
 <meta name="mobile-web-app-capable" content="yes">
@@ -156,7 +156,7 @@
     <dt>surfaces</dt><dd>trees, grass, sky, ground, roads, buildings, water, flowers</dd>
   </dl>
   <button id="start">Open the camera</button>
-  <small id="introNote">The object model downloads on first use. Surfaces download when selected.</small>
+  <small id="introNote">Use Chrome, Edge, or Safari. Embedded browsers may block camera access. Models download on first use.</small>
 </section>
 
 <div id="dock">

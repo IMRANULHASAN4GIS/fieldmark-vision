@@ -23,8 +23,9 @@ SDKs, or application-owned image servers.
 
 Inference happens locally in TensorFlow.js. On first use, the browser downloads
 pinned JavaScript libraries from jsDelivr and model files from Google-hosted
-TensorFlow locations. Those providers receive ordinary web connection metadata,
-but Fieldmark does not send them camera frames.
+TensorFlow locations. The optional surface model may route through TensorFlow
+Hub's Kaggle catalogue. Those providers receive ordinary web connection
+metadata, but Fieldmark does not send them camera frames.
 
 The service worker caches the application shell and each model after its first
 successful use. A previously loaded mode can then start offline. A model that

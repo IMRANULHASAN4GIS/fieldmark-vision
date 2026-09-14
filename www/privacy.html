@@ -29,7 +29,7 @@
   <p>The live camera is used only to run recognition on your device and draw the overlay. Fieldmark does not operate an image server, user account system, or analytics service.</p>
 
   <h2>Network connections</h2>
-  <p>On first use, the app downloads its pinned machine-learning libraries from jsDelivr and model files from Google-hosted TensorFlow locations. Your browser also contacts the site host to load and update the application. These services receive ordinary connection information such as your IP address, but they do not receive camera frames from Fieldmark.</p>
+  <p>On first use, the app downloads its pinned machine-learning libraries from jsDelivr and model files from Google-hosted TensorFlow locations. The optional surface model may be routed through TensorFlow Hub's Kaggle catalogue. Your browser also contacts the site host to load and update the application. These services receive ordinary connection information such as your IP address, but they do not receive camera frames from Fieldmark.</p>
 
   <h2>Offline storage</h2>
   <p>A service worker caches the application, libraries, and model weights so previously loaded recognition modes can work offline. You can remove these files through your browser's site-data settings or by uninstalling the PWA.</p>

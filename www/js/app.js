@@ -59,6 +59,20 @@ const maskCanvas = document.createElement('canvas');
 const maskCtx = maskCanvas.getContext('2d');
 let frameRequest = 0;
 
+function namedError(name, message) {
+  const error = new Error(message);
+  error.name = name;
+  return error;
+}
+
+function withTimeout(promise, milliseconds, error) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(error), milliseconds);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 /* ---------------- palette ----------------
  * One stable hue per class name, steered clear of the amber chrome so the
  * interface and the data never read as the same thing. */
@@ -83,13 +97,40 @@ function rgbFor(label) {
 
 /* ---------------- camera ---------------- */
 async function openCamera() {
-  if (S.stream) S.stream.getTracks().forEach(t => t.stop());
-  S.stream = await navigator.mediaDevices.getUserMedia({
+  stopCamera();
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw namedError('UnsupportedError', 'This browser does not provide camera access');
+  }
+
+  let requestExpired = false;
+  const request = navigator.mediaDevices.getUserMedia({
     audio: false,
     video: { facingMode: { ideal: S.facing }, width: { ideal: 1280 }, height: { ideal: 720 } },
+  }).then(stream => {
+    if (requestExpired) {
+      stream.getTracks().forEach(track => track.stop());
+      throw namedError('TimeoutError', 'The camera permission request expired');
+    }
+    return stream;
   });
+
+  try {
+    S.stream = await withTimeout(
+      request,
+      25000,
+      namedError('TimeoutError', 'The browser did not answer the camera request'),
+    );
+  } catch (error) {
+    requestExpired = error?.name === 'TimeoutError';
+    throw error;
+  }
+
   video.srcObject = S.stream;
-  await video.play();
+  await withTimeout(
+    video.play(),
+    12000,
+    namedError('NotReadableError', 'The camera opened but did not provide video'),
+  );
 }
 
 function stopCamera() {
@@ -462,12 +503,15 @@ $('start').addEventListener('click', async () => {
   S.starting = true;
   btn.disabled = true;
   btn.textContent = 'Starting…';
+  let phase = 'camera';
   try {
-    note.textContent = 'Waiting for camera permission';
+    note.textContent = 'Allow camera access when asked';
     await openCamera();
-    note.textContent = 'Downloading the object model';
+    phase = 'runtime';
+    note.textContent = 'Downloading recognition tools';
     await loadObjectRuntime();
-    note.textContent = 'Optimising recognition for this device';
+    phase = 'model';
+    note.textContent = 'Loading the object model · first use may take a minute';
     await initBackend();
     await loadDetector(PERCEPTION.detectorBase);
 
@@ -489,10 +533,22 @@ $('start').addEventListener('click', async () => {
     disposeModels();
     btn.disabled = false;
     btn.textContent = 'Open the camera';
-    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
+    if (e?.name === 'TimeoutError') {
+      note.textContent = 'No camera response. Open this link in Chrome, Edge, or Safari, allow Camera in site settings, then retry.';
+    } else if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
       note.textContent = 'Camera blocked. Allow it in your browser settings, then try again.';
+    } else if (e?.name === 'NotFoundError' || e?.name === 'OverconstrainedError') {
+      note.textContent = 'No usable camera was found on this device.';
+    } else if (e?.name === 'NotReadableError' || e?.name === 'AbortError') {
+      note.textContent = 'The camera is unavailable. Close other camera apps, reload this page, and retry.';
+    } else if (e?.name === 'UnsupportedError') {
+      note.textContent = 'This browser cannot open the camera. Use Chrome, Edge, Safari, or install the app.';
     } else if (!isSecure()) {
       note.textContent = 'The camera needs an https:// address. Open this page over https.';
+    } else if (phase === 'runtime') {
+      note.textContent = 'Recognition tools could not download. Check the connection, disable content blocking for this site, and retry.';
+    } else if (phase === 'model') {
+      note.textContent = 'The object model could not download. Check the connection and available storage, then retry.';
     } else {
       note.textContent = `Could not start: ${e.message || e.name || 'unknown error'}. Check your connection and try again.`;
     }

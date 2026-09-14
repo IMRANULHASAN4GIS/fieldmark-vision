@@ -22,6 +22,7 @@ export const RUNTIME_URLS = Object.freeze({
 });
 
 const pending = new Map();
+const SCRIPT_TIMEOUT_MS = 45000;
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -51,14 +52,28 @@ function loadScript(name, resource, ready) {
 
   const promise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
+    let settled = false;
+    let timer;
+    const finish = callback => value => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      callback(value);
+    };
+    const succeed = finish(resolve);
+    const fail = finish(reject);
     script.src = resource.url;
     script.integrity = resource.integrity;
     script.crossOrigin = 'anonymous';
     script.dataset.runtime = name;
     script.onload = () => ready()
-      ? resolve()
-      : reject(new Error(`${name} loaded without exposing its browser API`));
-    script.onerror = () => reject(new Error(`Could not download ${name}`));
+      ? succeed()
+      : fail(new Error(`${name} loaded without exposing its browser API`));
+    script.onerror = () => fail(new Error(`Could not download ${name}`));
+    timer = setTimeout(
+      () => fail(new Error(`Timed out downloading ${name}`)),
+      SCRIPT_TIMEOUT_MS,
+    );
     document.head.appendChild(script);
   }).catch(error => {
     pending.delete(name);
@@ -77,12 +92,12 @@ async function prepareCaching() {
 
 export async function loadObjectRuntime() {
   await prepareCaching();
-  await loadScript('TensorFlow.js', RUNTIME_URLS.tensorflow, () => typeof globalThis.tf !== 'undefined');
-  await loadScript('COCO-SSD', RUNTIME_URLS.detector, () => typeof globalThis.cocoSsd !== 'undefined');
+  await loadScript('TensorFlow.js', RUNTIME_URLS.tensorflow, () => typeof globalThis.tf?.ready === 'function');
+  await loadScript('COCO-SSD', RUNTIME_URLS.detector, () => typeof globalThis.cocoSsd?.load === 'function');
 }
 
 export async function loadSurfaceRuntime() {
   await prepareCaching();
-  await loadScript('TensorFlow.js', RUNTIME_URLS.tensorflow, () => typeof globalThis.tf !== 'undefined');
-  await loadScript('DeepLab', RUNTIME_URLS.segmenter, () => typeof globalThis.deeplab !== 'undefined');
+  await loadScript('TensorFlow.js', RUNTIME_URLS.tensorflow, () => typeof globalThis.tf?.ready === 'function');
+  await loadScript('DeepLab', RUNTIME_URLS.segmenter, () => typeof globalThis.deeplab?.load === 'function');
 }

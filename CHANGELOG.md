@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.1 — Startup recovery fix
+
+- Allowed TensorFlow.js's required dynamic-code bootstrap while keeping all
+  runtime libraries pinned and protected by SHA-384 integrity checks.
+- Rejects partially initialized TensorFlow/model libraries instead of treating
+  a global placeholder as a successful load.
+- Added camera and runtime-download timeouts so startup cannot remain stuck
+  indefinitely.
+- Added clear guidance for denied, missing, busy, unsupported, and unresponsive
+  cameras, including embedded-browser limitations.
+- Allowed and cached TensorFlow Hub's current Kaggle redirect path for the
+  optional DeepLab surface model.
+- Expanded the privacy disclosure for the TensorFlow Hub catalogue route.
+
 ## 2.1.0 — Professional test release
 
 ### Reliability

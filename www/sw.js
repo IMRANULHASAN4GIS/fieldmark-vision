@@ -1,8 +1,8 @@
 /* Offline shell plus runtime/model caching.
  * The first successful use of a model fills DEPS; later launches can reuse
  * those exact pinned resources without sending camera frames anywhere. */
-const SHELL = 'fieldmark-shell-v2.1';
-const DEPS  = 'fieldmark-deps-v2.1';
+const SHELL = 'fieldmark-shell-v2.2';
+const DEPS  = 'fieldmark-deps-v2.2';
 
 const SHELL_FILES = [
   './', './index.html', './manifest.webmanifest',
@@ -13,7 +13,7 @@ const SHELL_FILES = [
 ];
 
 const DEP_HOSTS = [
-  'cdn.jsdelivr.net', 'storage.googleapis.com', 'tfhub.dev',
+  'cdn.jsdelivr.net', 'storage.googleapis.com', 'tfhub.dev', 'kaggle.com',
 ];
 
 self.addEventListener('install', e => {
