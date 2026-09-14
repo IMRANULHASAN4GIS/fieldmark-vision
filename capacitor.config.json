@@ -1,0 +1,14 @@
+{
+  "appId": "app.fieldmark.vision",
+  "appName": "Fieldmark Vision",
+  "webDir": "www",
+  "loggingBehavior": "none",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#10161C"
+  }
+}

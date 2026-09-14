@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10161C">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+<title>Privacy · Fieldmark Vision</title>
+<style>
+  :root{color-scheme:dark;--bg:#10161c;--panel:#151d25;--text:#eef3f6;--dim:#a7b1b9;--line:#33404b;--accent:#ffb300}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+  main{width:min(720px,calc(100% - 40px));margin:0 auto;padding:56px 0 80px}
+  h1{font-size:clamp(32px,8vw,48px);line-height:1;margin:0 0 16px;letter-spacing:-.035em}
+  h2{font-size:19px;margin:34px 0 8px}
+  p,li{color:var(--dim)} strong{color:var(--text)}
+  .stamp{font-size:13px;color:var(--accent);letter-spacing:.03em}
+  .card{padding:18px 20px;border:1px solid var(--line);background:var(--panel);border-radius:5px}
+  a{color:var(--accent);text-underline-offset:3px}
+</style>
+</head>
+<body>
+<main>
+  <p class="stamp">Fieldmark Vision · privacy</p>
+  <h1>Your camera stays yours.</h1>
+  <div class="card"><strong>Fieldmark does not upload camera frames.</strong> Object detection and surface segmentation run locally in your browser or Android WebView.</div>
+
+  <h2>Camera access</h2>
+  <p>The live camera is used only to run recognition on your device and draw the overlay. Fieldmark does not operate an image server, user account system, or analytics service.</p>
+
+  <h2>Network connections</h2>
+  <p>On first use, the app downloads its pinned machine-learning libraries from jsDelivr and model files from Google-hosted TensorFlow locations. Your browser also contacts the site host to load and update the application. These services receive ordinary connection information such as your IP address, but they do not receive camera frames from Fieldmark.</p>
+
+  <h2>Offline storage</h2>
+  <p>A service worker caches the application, libraries, and model weights so previously loaded recognition modes can work offline. You can remove these files through your browser's site-data settings or by uninstalling the PWA.</p>
+
+  <h2>Capture and speech</h2>
+  <p>Capture creates an image only when you tap the button. It is downloaded locally or passed to your device's share sheet, where you choose what happens next. Spoken labels use your browser or operating system's speech service; voice implementation varies by device.</p>
+
+  <h2>Permissions</h2>
+  <p>You can revoke camera permission at any time in browser or Android settings. Recognition stops when camera access is unavailable.</p>
+
+  <p><a href="./">Return to Fieldmark</a></p>
+</main>
+</body>
+</html>

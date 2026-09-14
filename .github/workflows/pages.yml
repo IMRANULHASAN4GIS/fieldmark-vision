@@ -1,0 +1,41 @@
+# Publishes the www/ folder to GitHub Pages on every push to main.
+# After the first successful run, go to Settings -> Pages and set
+# Source to "GitHub Actions" if it is not already.
+name: Publish web app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate the application
+        run: npm run validate
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./www
+      - id: deployment
+        uses: actions/deploy-pages@v4

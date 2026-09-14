@@ -1,0 +1,60 @@
+# Builds an installable Android APK on GitHub's servers.
+# You need no Android Studio, no SDK, and no Java on your own machine.
+#
+# Run it: Actions tab -> "Build Android APK" -> Run workflow.
+# Collect it: open the finished run, download the "fieldmark-apk" artifact,
+# unzip, and send the .apk to your phone.
+#
+# This produces a DEBUG build: installable by sideloading, but not
+# acceptable to the Play Store. See README for the signing step.
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate the web application
+        run: npm run validate
+
+      - name: Generate the native project
+        run: npm run android:init
+
+      - name: Build
+        run: |
+          chmod +x android/gradlew
+          npm run android:build -- --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fieldmark-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

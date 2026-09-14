@@ -1,8 +1,9 @@
 {
-  "name": "Fieldmark",
+  "id": "./",
+  "name": "Fieldmark Vision",
   "short_name": "Fieldmark",
-  "description": "Point your camera at things and see what they are.",
-  "start_url": "./index.html",
+  "description": "Private, on-device camera recognition for objects and surfaces.",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

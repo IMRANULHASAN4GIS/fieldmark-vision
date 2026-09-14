@@ -1,69 +1,106 @@
-# Fieldmark — prototype 1
+# Fieldmark Vision
 
-Live camera object recognition that installs to a phone home screen. Everything
-runs on the device; no frame is ever uploaded.
+Private, on-device camera recognition for phones. Fieldmark detects countable
+objects with COCO-SSD and, when requested, segments surfaces such as sky,
+grass, roads, buildings, and water with DeepLab ADE20K.
 
-## Getting it onto your phone
+Camera frames stay on the device. There are no accounts, analytics, advertising
+SDKs, or application-owned image servers.
 
-The camera API only works over `https://`, so the folder has to be served — you
-cannot just open `index.html` from your files. Any of these work:
+## Product features
 
-**Netlify Drop (fastest, no account needed)**
-1. Go to `app.netlify.com/drop`
-2. Drag this whole folder in (or upload `fieldmark.zip` — it accepts zips)
-3. You get an `https://….netlify.app` address. Open it on your phone.
+- Fast object detection with stable IDs, label voting, box smoothing, and
+  appearance/disappearance hysteresis
+- Optional surface segmentation with adaptive pacing for sustained use
+- Objects, Surfaces, and combined display modes
+- Confidence, smoothing, overlay, and performance controls
+- Rear/front camera switching with recovery when a camera is unavailable
+- Freeze, local capture/share, spoken labels, wake lock, and portrait PWA mode
+- Installable HTTPS web app plus a reproducible Capacitor Android debug build
+- Keyboard-accessible settings and an in-app privacy disclosure
 
-**GitHub Pages** — push these files to a repo, then Settings → Pages → deploy
-from branch `main`, folder `/root`.
+## Privacy and offline behaviour
 
-**Your own machine** — `npx serve` gives you a local address, but phones need
-https, so use `npx localtunnel --port 3000` or `ngrok http 3000` to expose it.
+Inference happens locally in TensorFlow.js. On first use, the browser downloads
+pinned JavaScript libraries from jsDelivr and model files from Google-hosted
+TensorFlow locations. Those providers receive ordinary web connection metadata,
+but Fieldmark does not send them camera frames.
 
-## Installing it
+The service worker caches the application shell and each model after its first
+successful use. A previously loaded mode can then start offline. A model that
+has never been loaded still needs a connection once. See `www/privacy.html` for
+the user-facing disclosure.
 
-- **Android / Chrome** — open the address, tap ⋮ → *Add to Home screen* (or take
-  the install prompt when it appears).
-- **iPhone / Safari** — open the address in **Safari** (not Chrome), tap the
-  share button → *Add to Home Screen*.
+## Run and validate locally
 
-It then launches fullscreen with its own icon, no browser bars.
+Requirements: Node.js 20 or newer.
 
-## Files
+```bash
+npm ci
+npm run validate
+npm run serve
+```
 
-| | |
-|---|---|
-| `index.html` | markup and all styling |
-| `app.js` | camera, inference loop, tracker, smoothing, rendering |
-| `sw.js` | service worker — caches shell and model so relaunch is offline |
-| `manifest.webmanifest` | makes it installable |
-| `icons/` | home screen icons |
+Open `http://127.0.0.1:4173`. Localhost is treated as a secure browser context,
+so the camera API can be tested there. Opening `www/index.html` directly will
+not work.
 
-## What is actually running
+`npm run validate` performs syntax validation and runs the Node test suite for
+tracking, IoU, hysteresis, label voting, segmentation shares, suppression,
+palette mapping, and region-label anchors.
 
-COCO-SSD (MobileNet backbone) via TensorFlow.js, WebGL backend. Two weights
-available in **Tune → Model**: `lite_mobilenet_v2` (fast, default) and
-`mobilenet_v2` (slower, more accurate). 80 classes — the full list is in
-**Tune → What it can see**.
+## Publish with GitHub Pages
 
-The layer worth reading is the tracker in `app.js`. Raw detector output flickers
-badly frame to frame. On top of it sits:
+1. Push the repository to GitHub.
+2. Open **Settings → Pages** and select **GitHub Actions** as the source.
+3. Push to `main`, or run **Publish web app** from the Actions tab.
 
-- greedy IoU association giving each object a stable id across frames
-- exponential moving average on box coordinates (`CFG.boxAlpha`)
-- majority vote on the class label over a 12-frame window
-- hysteresis — appear after `minHits` frames, disappear after `maxMisses`
+The workflow validates the application before uploading only the `www/`
+directory. GitHub Pages supplies the HTTPS origin required by the camera API.
 
-Turn on **Tune → Unsmoothed output** to see the raw detector and compare.
+## Build an Android test APK
 
-## Known limits of this build
+Open **Actions → Build Android APK → Run workflow**. The workflow installs the
+locked dependency tree, runs validation, creates a fresh Capacitor Android
+project, adds the camera permission and Fieldmark launcher artwork, then uploads
+`fieldmark-apk` as a workflow artifact.
 
-- 80 classes only. No tree, grass, sky, streetlight, desk, or flower — those
-  need either a fine-tuned model or an open-vocabulary one.
-- Small, distant, occluded, blurred and low-light objects are missed.
-- Sustained use heats the phone and the frame rate drops. Not yet adaptive.
-- iOS caps web camera resolution and WebGL throughput below what a native app
-  gets, so iPhone frame rates will look worse here than they would in a real app.
+The result is a debug APK for direct testing and sideloading. It is not signed
+or configured for Play Store submission. A store release still needs a durable
+application ID, release keystore, signing configuration, versioning policy,
+store listing, and completed privacy/data-safety declarations.
 
-## Tuning
+## Architecture
 
-All constants live in the `CFG` object at the top of `app.js`.
+- `www/js/app.js` — camera lifecycle, task scheduler, rendering, controls
+- `www/js/tracker.js` — IoU association, EMA smoothing, voting, hysteresis
+- `www/js/perception.js` — model ownership and segmentation analysis
+- `www/js/runtime.js` — pinned, retryable, service-worker-aware dependency loader
+- `www/sw.js` — scoped application and model caching
+- `tests/core.test.js` — deterministic tests for pure recognition logic
+- `scripts/patch-android.mjs` — repeatable native permission/icon patch
+
+Detection and segmentation never run concurrently. Segmentation is lazy-loaded
+only when Surfaces or Both is selected, so object detection becomes useful
+quickly and lower-powered devices do not pay the second model's cost unless the
+user asks for it.
+
+## Known limits
+
+- COCO-SSD recognises 80 fixed object classes; DeepLab ADE20K recognises 150
+  fixed scene classes.
+- Small, distant, occluded, blurred, and poorly lit subjects remain difficult.
+- Surface boundaries are coarse and surface classes are not instance counts.
+- Sustained dual-model use heats phones; adaptive pacing reduces but cannot
+  eliminate thermal throttling.
+- Browser and WebView camera/GPU performance differs across devices, so test on
+  the actual target phones before wider distribution.
+
+## Release checklist
+
+- Run `npm run validate`.
+- Test rear and front cameras on at least one current Android phone and iPhone.
+- Test first-load and previously-cached offline startup.
+- Test permission denial, retry, camera switching, capture/share, speech, and
+  orientation changes.
+- Review `www/privacy.html` whenever network behaviour changes.

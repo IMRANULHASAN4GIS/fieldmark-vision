@@ -1,0 +1,25 @@
+{
+  "name": "fieldmark-vision",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "description": "On-device camera object and surface recognition",
+  "scripts": {
+    "serve": "node scripts/serve.mjs",
+    "check": "node --check www/js/app.js && node --check www/js/tracker.js && node --check www/js/perception.js && node --check www/js/runtime.js && node --check www/sw.js && node --check scripts/patch-android.mjs",
+    "test": "node --test",
+    "validate": "npm run check && npm test",
+    "android:init": "npx cap add android && node scripts/patch-android.mjs && npx cap sync android",
+    "android:build": "cd android && ./gradlew assembleDebug"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}

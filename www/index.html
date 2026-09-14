@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>Fieldmark Vision</title>
+<meta name="description" content="Point your camera at anything and see what it is — objects and surfaces, all on your device.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://cdn.jsdelivr.net https://storage.googleapis.com https://tfhub.dev; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; worker-src 'self' blob:; media-src 'self' blob:">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#10161C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fieldmark">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --slate:#10161C;
+    --panel:#151D25;
+    --paper:#EEF3F6;
+    --paper-dim:rgba(238,243,246,.56);
+    --paper-faint:rgba(238,243,246,.20);
+    --line:rgba(238,243,246,.12);
+    --signal:#FFB300;
+    --alarm:#FF6B57;
+    --sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",ui-monospace,monospace;
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+  body{background:var(--slate);color:var(--paper);font-family:var(--sans);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
+  :focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  #stage{position:fixed;inset:0;background:var(--slate);overflow:hidden}
+  #video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  #overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+
+  .reticle{position:absolute;inset:calc(var(--safe-t) + 56px) 14px calc(var(--safe-b) + 152px) 14px;pointer-events:none}
+  .reticle i{position:absolute;width:15px;height:15px;border:1px solid var(--paper-faint)}
+  .reticle i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0}
+  .reticle i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0}
+  .reticle i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0}
+  .reticle i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0}
+  body.idle .reticle{display:none}
+
+  #telemetry{
+    position:fixed;top:0;left:0;right:0;z-index:10;
+    padding:calc(var(--safe-t) + 10px) 14px 10px;
+    display:flex;align-items:center;gap:13px;
+    background:linear-gradient(rgba(16,22,28,.8),rgba(16,22,28,0));
+    font-family:var(--mono);font-size:11.5px;color:var(--paper-dim);pointer-events:none;
+  }
+  #telemetry b{color:var(--paper);font-weight:500}
+  #status{display:flex;align-items:center;gap:6px;font-family:var(--sans);font-size:12.5px;font-weight:500;color:var(--paper)}
+  #dot{width:7px;height:7px;border-radius:50%;background:var(--paper-faint);flex:none}
+  body.live #dot{background:var(--signal);animation:pulse 2.4s ease-out infinite}
+  body.error #dot{background:var(--alarm)}
+  @keyframes pulse{to{box-shadow:0 0 0 9px rgba(255,179,0,0)}}
+  @media (prefers-reduced-motion:reduce){body.live #dot{animation:none}}
+  .spacer{flex:1}
+
+  #intro{
+    position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;justify-content:flex-end;
+    padding:calc(var(--safe-t) + 28px) 26px calc(var(--safe-b) + 30px);
+    background:radial-gradient(130% 75% at 50% 6%,rgba(255,179,0,.11),transparent 60%),var(--slate);
+    overflow-y:auto;
+  }
+  #intro h1{font-size:clamp(38px,13vw,58px);font-weight:600;letter-spacing:-.035em;margin:0 0 14px;line-height:.95}
+  #intro p{margin:0 0 10px;max-width:32ch;color:var(--paper-dim)}
+  #intro .lede{color:var(--paper);font-size:17px;margin-bottom:18px}
+  .pairs{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;margin:22px 0 4px;font-size:13.5px}
+  .pairs dt{color:var(--signal);font-family:var(--mono);font-size:12px;padding-top:2px}
+  .pairs dd{margin:0;color:var(--paper-dim)}
+  #start{margin-top:26px;width:100%;padding:17px;border-radius:2px;background:var(--signal);color:var(--slate);font-weight:600;font-size:16.5px}
+  #start:disabled{opacity:.6}
+  #introNote{display:block;margin-top:13px;color:var(--paper-dim);font-size:12.5px;text-align:center}
+
+  #dock{
+    position:fixed;left:0;right:0;bottom:0;z-index:20;display:none;
+    padding:16px 14px calc(var(--safe-b) + 14px);
+    background:linear-gradient(rgba(16,22,28,0),rgba(16,22,28,.84) 34%,rgba(16,22,28,.95));
+  }
+  body.live #dock,body.error #dock{display:block}
+
+  #modes{display:flex;border:1px solid var(--line);border-radius:2px;overflow:hidden;margin-bottom:11px}
+  #modes button{flex:1;padding:9px 4px;font-size:12.5px;font-weight:500;color:var(--paper-dim)}
+  #modes button[aria-pressed="true"]{background:rgba(238,243,246,.10);color:var(--paper)}
+
+  #tally{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;min-height:27px;margin-bottom:12px;padding-bottom:2px}
+  #tally::-webkit-scrollbar{display:none}
+  #tally span{flex:none;display:flex;align-items:center;gap:6px;padding:4px 9px;border:1px solid;border-radius:2px;font-size:12.5px;font-weight:500;white-space:nowrap;background:rgba(16,22,28,.55)}
+  #tally i{width:8px;height:8px;flex:none;display:block}
+  #tally .stuff i{border-radius:50%}
+  #tally .empty{border-color:var(--paper-faint);color:var(--paper-dim);font-weight:400;background:none}
+
+  .row{display:flex;gap:6px}
+  .ctl{flex:1;padding:12px 3px;border:1px solid var(--line);border-radius:2px;font-size:12px;font-weight:500;text-align:center;color:var(--paper-dim);background:rgba(16,22,28,.5)}
+  .ctl:active{background:rgba(238,243,246,.10)}
+  .ctl[aria-pressed="true"]{color:var(--signal);border-color:var(--signal)}
+
+  #sheet{position:fixed;inset:auto 0 0 0;z-index:50;max-height:85vh;overflow-y:auto;background:var(--panel);border-top:1px solid var(--line);padding:22px 20px calc(var(--safe-b) + 24px);transform:translateY(101%);transition:transform .28s cubic-bezier(.22,1,.36,1)}
+  #sheet.open{transform:translateY(0)}
+  @media (prefers-reduced-motion:reduce){#sheet{transition:none}}
+  #scrim{position:fixed;inset:0;z-index:45;background:rgba(8,11,14,.55);opacity:0;pointer-events:none;transition:opacity .28s}
+  #scrim.open{opacity:1;pointer-events:auto}
+  #sheet h2{font-size:19px;font-weight:600;margin:0 0 3px;letter-spacing:-.02em}
+  #sheet h3{font-size:13px;font-weight:600;margin:26px 0 8px}
+  #sheet p{margin:0 0 4px;color:var(--paper-dim);font-size:13.5px;max-width:54ch}
+  #sheet .sub{margin-bottom:16px}
+  .field{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .field:last-of-type{border-bottom:0}
+  .field label{font-size:14px}
+  .field .hint{display:block;color:var(--paper-dim);font-size:12.5px;margin-top:1px}
+  .field output{font-family:var(--mono);font-size:13px;color:var(--signal)}
+  input[type=range]{width:100%;accent-color:var(--signal);margin:9px 0 0}
+  .seg{display:flex;border:1px solid var(--line);border-radius:2px;overflow:hidden;flex:none}
+  .seg button{padding:8px 12px;font-size:12.5px;color:var(--paper-dim);font-weight:500}
+  .seg button[aria-pressed="true"]{background:var(--signal);color:var(--slate)}
+  .vocab{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0 2px;font-size:12px;color:var(--paper-dim)}
+  .vocab span{border:1px solid var(--line);border-radius:2px;padding:2px 7px}
+  #close{width:100%;margin-top:26px;padding:14px;border:1px solid var(--paper-faint);border-radius:2px;font-weight:500}
+
+  #toast{position:fixed;left:14px;right:14px;bottom:calc(var(--safe-b) + 150px);z-index:30;padding:13px 15px;border-radius:2px;border-left:2px solid var(--signal);background:rgba(21,29,37,.96);font-size:13.5px;display:none}
+  #toast.show{display:block}
+  #toast.bad{border-left-color:var(--alarm)}
+  .legal{margin-top:20px!important;text-align:center}
+  .legal a{color:var(--paper-dim);text-underline-offset:3px}
+</style>
+</head>
+<body class="idle">
+
+<div id="stage">
+  <video id="video" playsinline muted autoplay></video>
+  <canvas id="overlay"></canvas>
+  <div class="reticle"><i></i><i></i><i></i><i></i></div>
+</div>
+
+<div id="telemetry" aria-hidden="true">
+  <span id="status"><i id="dot"></i><span id="statusText">Standby</span></span>
+  <span class="spacer"></span>
+  <span><b id="fps">—</b> fps</span>
+  <span><b id="ms">—</b> ms</span>
+  <span><b id="segms">—</b> seg</span>
+</div>
+
+<section id="intro">
+  <h1>Fieldmark</h1>
+  <p class="lede">Point the camera at anything. It names what it sees.</p>
+  <p>Recognition runs on this device. Camera frames are never uploaded.</p>
+  <dl class="pairs">
+    <dt>objects</dt><dd>people, vehicles, furniture, food, screens, animals</dd>
+    <dt>surfaces</dt><dd>trees, grass, sky, ground, roads, buildings, water, flowers</dd>
+  </dl>
+  <button id="start">Open the camera</button>
+  <small id="introNote">The object model downloads on first use. Surfaces download when selected.</small>
+</section>
+
+<div id="dock">
+  <div id="modes" role="group" aria-label="What to look for">
+    <button id="mdObjects" aria-pressed="true">Objects</button>
+    <button id="mdScene" aria-pressed="false">Surfaces</button>
+    <button id="mdAll" aria-pressed="false">Both</button>
+  </div>
+  <div id="tally"><span class="empty">Nothing recognised yet</span></div>
+  <div class="row">
+    <button class="ctl" id="btnFreeze">Freeze</button>
+    <button class="ctl" id="btnShot">Capture</button>
+    <button class="ctl" id="btnFlip">Flip</button>
+    <button class="ctl" id="btnSpeak" aria-pressed="false">Speak</button>
+    <button class="ctl" id="btnSettings">Tune</button>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<div id="scrim"></div>
+<section id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-hidden="true" inert tabindex="-1">
+  <h2 id="sheetTitle">Tune</h2>
+  <p class="sub">Trade steadiness against responsiveness.</p>
+
+  <h3>Objects</h3>
+  <div class="field">
+    <label for="conf">Confidence floor<span class="hint">Higher hides guesses. Lower finds more.</span></label>
+    <output id="confOut">50%</output>
+  </div>
+  <input type="range" id="conf" min="20" max="90" step="5" value="50">
+  <div class="field">
+    <label for="patience">Patience<span class="hint">Frames a label holds before it appears.</span></label>
+    <output id="patienceOut">3</output>
+  </div>
+  <input type="range" id="patience" min="1" max="8" step="1" value="3">
+  <div class="field">
+    <label>Detector<span class="hint">Accurate costs about half the frame rate.</span></label>
+    <div class="seg"><button id="mFast" aria-pressed="true">Fast</button><button id="mAcc" aria-pressed="false">Accurate</button></div>
+  </div>
+
+  <h3>Surfaces</h3>
+  <div class="field">
+    <label for="tint">Colour wash<span class="hint">How strongly regions are tinted.</span></label>
+    <output id="tintOut">32%</output>
+  </div>
+  <input type="range" id="tint" min="0" max="80" step="4" value="32">
+  <div class="field">
+    <label for="minshare">Smallest region<span class="hint">Share of the frame worth naming.</span></label>
+    <output id="minshareOut">1.2%</output>
+  </div>
+  <input type="range" id="minshare" min="4" max="80" step="2" value="12">
+  <div class="field">
+    <label>Refresh<span class="hint">Slower keeps objects smooth.</span></label>
+    <div class="seg"><button id="sSlow" aria-pressed="false">Slow</button><button id="sAuto" aria-pressed="true">Auto</button><button id="sFast" aria-pressed="false">Fast</button></div>
+  </div>
+
+  <h3>Display</h3>
+  <div class="field"><label>Outlines</label><div class="seg"><button id="tBox" aria-pressed="true">On</button></div></div>
+  <div class="field"><label>Confidence figures</label><div class="seg"><button id="tScore" aria-pressed="true">On</button></div></div>
+  <div class="field"><label>Unsmoothed output<span class="hint">See the flicker the smoothing removes.</span></label><div class="seg"><button id="tRaw" aria-pressed="false">Off</button></div></div>
+
+  <h3>What it can see</h3>
+  <p>Objects — recognised individually, with an outline and a count.</p>
+  <div class="vocab" id="vocabThings"></div>
+  <p style="margin-top:14px">Surfaces — recognised as regions, tinted and named once.</p>
+  <div class="vocab" id="vocabStuff"></div>
+
+  <p class="legal"><a href="privacy.html">Privacy and data use</a></p>
+  <button id="close">Back to the camera</button>
+</section>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
